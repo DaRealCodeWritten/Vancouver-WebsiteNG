@@ -1,0 +1,4 @@
+/venv
+/templates/.vscode
+/.idea
+master.config
