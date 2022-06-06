@@ -2,3 +2,5 @@
 /templates/.vscode
 /.idea
 master.config
+*.pem
+*.key
