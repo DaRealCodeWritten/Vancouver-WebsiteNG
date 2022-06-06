@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Virtual Vancouver FIR</title>
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='index.css') }}"/>
+</head>
+<body>
+    <nav class="fixed-nav-bar">
+        <a href="https://auth-dev.vatsim.net/oauth/authorize?client_id=383&redirect_uri=http%2F%2Fczvr-bot.xyz%3A5000%2Fcallback%2Fvatsim&response_type=code&scope=full_name+vatsim_details" class="login">Login</a>
+        <p class="welcome">{{ welcome }}</p>
+    </nav>
+</body>
+</html>
