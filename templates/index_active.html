@@ -6,9 +6,13 @@
     <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='index_active.css') }}"/>
 </head>
 <body>
-    <img src="https://media.discordapp.com/attachments/589549687418257490/978770508646604870/unknown.png" class="background">
+    <img src="{{ url_for('static', filename='background.png') }}" class="background">
     <nav class="fixed-nav-bar">
-        <a class="welcome">Welcome, {{ welcome }}</a>
+        <a class="welcome" style="cursor: pointer" href="/profile">Welcome, {{ welcome }}</a>
+        <a style="cursor: pointer" href="/about">About</a>
+        <a style="cursor: pointer" href="/contact">Contact</a>
+        <a style="cursor: pointer" href="/pilots">Pilots</a>
+        <a style="cursor: pointer" href="/controllers">Controllers</a>
     </nav>
 </body>
 </html>

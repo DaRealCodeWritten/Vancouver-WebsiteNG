@@ -1,4 +1,4 @@
-.login {
+.fixed-nav-bar a {
     border: none;
     color: white;
     text-align: center;
@@ -6,15 +6,15 @@
     display: inline-block;
     font-size: 16px;
     -webkit-filter: brightness(100%);
-    position: fixed;
     -webkit-transition: all 0.5s ease;
     -moz-transition: all 0.5s ease;
     -o-transition: all 0.5s ease;
     -ms-transition: all 0.5s ease;
     transition: all 0.5s ease;
+    padding: 15px 10px;
 }
 
-.login:hover {
+.fixed-nav-bar a:hover {
     -webkit-filter: brightness(90%);
 }
 
@@ -29,4 +29,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.background {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    height: 100%;
+    width: 100%;
 }
