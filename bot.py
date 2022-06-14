@@ -138,7 +138,6 @@ def is_dev():
         if ctx.author.id in [
             703104766632263730,
             212654520855953409,
-            715758796059967498,
             160534932970536960
         ]:
             return True
@@ -175,30 +174,6 @@ async def starttask(ctx):
     update_tasker.start()
     embed = discord.Embed(title="Completed", description=f"Task started", color=discord.Colour.green())
     await ctx.send(embed=embed)
-
-
-@is_dev()
-@bot.command()
-async def dbexec(ctx, *, query):
-    """Execute a given query against the db"""
-    try:
-        dbcrs = db.cursor()
-        dbcrs.execute(query)
-        if "select" in query.lower():
-            await ctx.author.send(list(dbcrs))
-        dbcrs.close()
-        db.commit()
-        await ctx.send("Command completed")
-    except Exception as e:
-        print(e)
-        await ctx.send("Command failed for reason: {}".format(e))
-    finally:
-        # noinspection PyBroadException
-        try:
-            dbcrs.close()
-            db.commit()
-        except Exception:  # Cursor was already closed or changes were already committed, ignore
-            pass
 
 
 @is_dev()

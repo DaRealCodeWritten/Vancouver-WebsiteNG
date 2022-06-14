@@ -65,7 +65,7 @@ perms = PermissionsManagement(database)
 async def new_event(data):
     uuid = data["uuid"]
     cursor = database.cursor()
-    cursor.execute("SELECT * FROM events WHERE uuid = %s", (uuid,))
+    cursor.execute("SELECT * FROM events WHERE uuid = ?", (uuid,))
     if cursor.rowcount == 0:  # Event does not exist
         await sock.emit("ACK", {"status": "error", "message": "ERR_EVENT_MISSING"})
         return
@@ -127,7 +127,7 @@ async def delete_user():
     else:
         cuser = to_user_object(current_user)
         cursor = database.cursor()
-        cursor.execute(f"DELETE FROM {app_config['DATABASE_TABLE']} WHERE cid = %s", (cuser.cid,))
+        cursor.execute(f"DELETE FROM {app_config['DATABASE_TABLE']} WHERE cid = ?", (cuser.cid,))
         database.commit()
         logout_user()
         active_users.pop(cuser.cid)
@@ -140,7 +140,7 @@ async def delete_user():
 @app.route("/uploads/files")
 async def uploads():
     try:
-        return send_file(os.path.join(app.root_path, "uploads\\") + request.args.get("file"), as_attachment=True)
+        return send_file(os.path.join(app.root_path, "uploads/") + request.args.get("file"), as_attachment=True)
     except FileNotFoundError:
         return abort(Response("File not found.", 404))
     except TypeError:
@@ -251,14 +251,14 @@ async def login():
         if jsdata.get("data") is None:  # Endpoint returned an error or something went wrong
             return abort(Response("VATSIM API returned a malformed response", 400))
         cid = int(jsdata["data"]["cid"])
-        rating = jsdata["data"]["vatsim"]["rating"]["id"]
+        rating = int(jsdata["data"]["vatsim"]["rating"]["id"])
         personal = jsdata["data"].get("personal")
         if personal is None:  # User did not authorize access to personal data
             name = cid
         else:
             name = personal["name_first"]
         cursor = database.cursor(buffered=True)
-        cursor.execute(f"SELECT * FROM {app_config['DATABASE_TABLE']} WHERE cid = %s", (cid,))
+        cursor.execute(f"SELECT * FROM {app_config['DATABASE_TABLE']} WHERE cid = ?", (cid,))
         if cursor.rowcount == 0:
             pass
         else:
@@ -267,7 +267,12 @@ async def login():
         cursor.close()
         ncursor = database.cursor()
         ncursor.execute(
-            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES ({cid}, NULL, {rating}, NULL, NULL) ON DUPLICATE KEY UPDATE rating = {rating}"
+            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES (?, NULL, ?, NULL, NULL) ON DUPLICATE KEY UPDATE rating = ?",
+            (
+                cid,
+                rating,
+                rating
+            )
         )
         ncursor.close()
         database.commit()
@@ -278,7 +283,7 @@ async def login():
         exc = format_exception(type(e), e, e.__traceback__)
         print(exc)
         return abort(Response("VATSIM authentication failed", 400))
-    return redirect("https://czvr-bot.xyz/")
+    return redirect("/")
 
 
 if __name__ == "__main__":
