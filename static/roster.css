@@ -1,0 +1,31 @@
+.fixed-nav-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    width: 100%;
+    height: 50px;
+    background-color: #013162;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fixed-nav-bar a {
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    -webkit-filter: brightness(100%);
+    -webkit-transition: all 0.5s ease;
+    -moz-transition: all 0.5s ease;
+    -o-transition: all 0.5s ease;
+    transition: all 0.5s ease;
+    padding: 15px 10px;
+}
+
+.fixed-nav-bar a:hover {
+    -webkit-filter: brightness(90%);
+}

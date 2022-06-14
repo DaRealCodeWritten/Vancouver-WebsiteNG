@@ -1,0 +1,41 @@
+.fixed-nav-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    width: 100%;
+    height: 50px;
+    background-color: #013162;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+a, .delete-user {
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    -webkit-filter: brightness(100%);
+    -webkit-transition: all 0.5s ease;
+    -moz-transition: all 0.5s ease;
+    -o-transition: all 0.5s ease;
+    -ms-transition: all 0.5s ease;
+    transition: all 0.5s ease;
+    padding: 15px 10px;
+}
+
+a:hover {
+    -webkit-filter: brightness(90%);
+}
+
+.delete-user {
+    background: red;
+    padding: 50px 16px;
+}
+
+.delete-sure {
+    display: none;
+}

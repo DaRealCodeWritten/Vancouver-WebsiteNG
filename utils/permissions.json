@@ -1,0 +1,22 @@
+{
+    "FC": {
+        "Override-All": "True"
+    },
+    "DC": {
+        "Override-All": "True"
+    },
+    "WM": {
+        "Override-All": "True"
+    },
+    "EC": {
+        "Event-Management": "True"
+    },
+    "DV": {
+        "Override-All": "True",
+        "Not-Editable": "True"
+    },
+    "CI": {
+        "User-Management": "True",
+        "File-Management": "True"
+    }
+}

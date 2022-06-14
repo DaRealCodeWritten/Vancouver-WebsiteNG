@@ -1,6 +1,6 @@
 /venv
 /templates/.vscode
-/.idea
-master.config
+/uploads/*
+*.config
 *.pem
 *.key

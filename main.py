@@ -1,7 +1,10 @@
+import asyncio
 import ssl
 import os
+from traceback import format_exception
 from socketio.asyncio_client import AsyncClient
 from utils.configreader import config
+from utils.perms import PermissionsManagement
 from werkzeug.utils import secure_filename
 from requests import post, get
 from mysql.connector import connect
@@ -26,14 +29,15 @@ class ActiveUser(UserMixin):
 
 class AnonymousUser(AnonymousUserMixin):
     def __init__(self):
-        pass
+        self.cid = 0
+        self.rating = -2
 
     @property
     def is_authenticated(self):
         return False
 
 
-def to_user_object(user: ActiveUser | LocalProxy) -> ActiveUser: # Convert a LocalProxy to an ActiveUser
+def to_user_object(user: ActiveUser | LocalProxy) -> ActiveUser:  # Convert a LocalProxy to an ActiveUser
     return user._get_current_object()
 
 
@@ -54,6 +58,7 @@ database = connect(
     password=app_config["DATABASE_PASSWORD"],
     database="czvr"
 )
+perms = PermissionsManagement(database)
 
 
 @sock.on("EVENT POSTED")
@@ -99,10 +104,15 @@ def load_user(user_id: int):
 
 @app.route("/")
 async def index():
-    if current_user.is_authenticated is False: # User is not logged in
-        return render_template("index.html")
-    else: # User is logged in
-        return render_template("index_active.html", welcome=f"{current_user.name}")
+    if current_user.is_authenticated is False:  # User is not logged in
+        return render_template("index/index.html")
+    else:  # User is logged in
+        return render_template("index/index_active.html", welcome=f"{current_user.name}")
+
+
+@app.route("/api/v1/coffee/brew-coffee")
+async def brew_coffee():
+    return abort(Response("I'm a teapot", 418))
 
 
 @app.route('/favicon.ico')
@@ -121,15 +131,16 @@ async def delete_user():
         database.commit()
         logout_user()
         active_users.pop(cuser.cid)
-        sock.emit("USER DELETED", {"cid": cuser.cid})
-        msg = "User data successfully deleted, you may now close this window or tab"
-        msg += "\nYour data on the roster (if applicable) will NOT be deleted."
+        # sock.emit("USER DELETED", {"cid": cuser.cid})
+        msg = "User data successfully deleted, you may now close this window or tab, "
+        msg += "your data on the roster (if applicable) will NOT be deleted."
+        return msg
 
 
 @app.route("/uploads/files")
 async def uploads():
     try:
-        return send_file(os.path.join(app.root_path, "uploads\\")+request.args.get("file"), as_attachment=True)
+        return send_file(os.path.join(app.root_path, "uploads\\") + request.args.get("file"), as_attachment=True)
     except FileNotFoundError:
         return abort(Response("File not found.", 404))
     except TypeError:
@@ -138,6 +149,12 @@ async def uploads():
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
+    cuser = to_user_object(current_user)
+    if cuser is False:
+        return abort(Response("You are not logged in.", 401))
+    _, group = perms.get_permissions(cuser.cid)
+    if perms.has_permissions_for(group, "File-Management") is False:
+        return abort(Response("You do not have permission to upload files.", 403))
     if request.method == 'POST':
         # check if the post request has the file part
         if 'file' not in request.files:
@@ -153,7 +170,7 @@ def upload_file():
             filename = secure_filename(file.filename)
             file.save(os.path.join(os.path.join(app.root_path, "uploads"), filename))
             flash("File successfully uploaded", "message")
-            return redirect(url_for("/upload"))
+            return redirect(url_for("/"))
     return '''
     <!doctype html>
     <title>Upload new File</title>
@@ -163,6 +180,30 @@ def upload_file():
       <input type=submit value=Upload>
     </form>
     '''
+
+
+@app.route("/roster")
+async def roster():
+    if current_user.is_authenticated is False:
+        return render_template("roaster/roster.html",
+                               permissions="None",
+                               redirect=app_config["VATSIM_ENDPOINT"],
+                               login=f"Login"
+                               )
+    user = to_user_object(current_user)
+    _, group = perms.get_permissions(user.cid)
+    if user.rating >= 8 or perms.has_permissions_for(group, "User-Management"):
+        return render_template("roaster/roster.html",
+                               permissions="INS",
+                               redirect=url_for("profile"),
+                               login=f"Welcome, {user.name}"
+                               )
+    else:
+        return render_template("roaster/roster.html",
+                               permissions="None",
+                               redirect=url_for("profile"),
+                               login=f"Welcome, {user.name}"
+                               )
 
 
 @app.route("/logout")
@@ -178,17 +219,17 @@ async def logout():
 
 @app.route("/profile")
 async def profile():
-    if not current_user.is_authenticated: # User is not logged in, send to login page
+    if not current_user.is_authenticated:  # User is not logged in, send to login page
         return redirect(
             "https://auth-dev.vatsim.net/oauth/authorize?client_id=383&redirect_uri=https%3A%2F%2Fczvr-bot.xyz%2Fcallback%2Fvatsim&response_type=code&scope=full_name+vatsim_details")
-    return render_template("profile.html", name=current_user.name, )
+    return render_template("profile.html", profile=current_user.name, )
 
 
 @app.route("/callback/vatsim")
 async def login():
     try:
         code = request.args.get("code")
-        if code is None: # User did not authorize, or something went wrong
+        if code is None:  # User did not authorize, or something went wrong
             return abort(Response("VATSIM authentication was aborted", 400))
         rqst = {
             "code": code,
@@ -199,7 +240,7 @@ async def login():
         }
         resp = post("https://auth-dev.vatsim.net/oauth/token", data=rqst)
         token = resp.json().get("access_token")
-        if token is None: # Endpoint returned an error or something went wrong
+        if token is None:  # Endpoint returned an error or something went wrong
             return abort(Response("VATSIM Token endpoint returned a malformed response", 400))
         headers = {
             "Authorization": f"Bearer {token}",
@@ -207,12 +248,12 @@ async def login():
         }
         data = get("https://auth-dev.vatsim.net/api/user", headers=headers)
         jsdata = data.json()
-        if jsdata.get("data") is None: # Endpoint returned an error or something went wrong
+        if jsdata.get("data") is None:  # Endpoint returned an error or something went wrong
             return abort(Response("VATSIM API returned a malformed response", 400))
         cid = int(jsdata["data"]["cid"])
         rating = jsdata["data"]["vatsim"]["rating"]["id"]
         personal = jsdata["data"].get("personal")
-        if personal is None: # User did not authorize access to personal data
+        if personal is None:  # User did not authorize access to personal data
             name = cid
         else:
             name = personal["name_first"]
@@ -221,11 +262,12 @@ async def login():
         if cursor.rowcount == 0:
             pass
         else:
-            sock.emit("UPDATE USER", {"cid": cid, "rating": rating})
+            pass
+            # await sock.emit("UPDATE USER", {"cid": cid, "rating": rating})
         cursor.close()
         ncursor = database.cursor()
         ncursor.execute(
-            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES ({cid}, NULL, {rating}, NULL) ON DUPLICATE KEY UPDATE rating = {rating}"
+            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES ({cid}, NULL, {rating}, NULL, NULL) ON DUPLICATE KEY UPDATE rating = {rating}"
         )
         ncursor.close()
         database.commit()
@@ -233,7 +275,9 @@ async def login():
         active_users[cid] = user
         login_user(user, True)
     except Exception as e:
-        return str(e)
+        exc = format_exception(type(e), e, e.__traceback__)
+        print(exc)
+        return abort(Response("VATSIM authentication failed", 400))
     return redirect("https://czvr-bot.xyz/")
 
 

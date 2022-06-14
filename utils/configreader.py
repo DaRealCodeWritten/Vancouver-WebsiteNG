@@ -3,7 +3,7 @@ def config():
     with open("master.config") as cfg:
         for line in cfg:
             line = line.strip("\n")
-            split = line.split(":")
+            split = line.split(":", 1)
             dcfg[split[0]] = split[1]
     return dcfg
 
