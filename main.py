@@ -43,7 +43,7 @@ def to_user_object(user: ActiveUser | LocalProxy) -> ActiveUser:  # Convert a Lo
 
 sock = AsyncClient()
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-context.load_cert_chain("cert.pem", "key.key")
+context.load_cert_chain("secrets/cert.pem", "secrets/key.key")
 app_config = config()
 app = Flask(__name__)
 app.secret_key = app_config["FLASK_CLIENT_SECRET"]

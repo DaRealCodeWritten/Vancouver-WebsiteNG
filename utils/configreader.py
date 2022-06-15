@@ -1,6 +1,6 @@
 def config():
     dcfg = {}
-    with open("master.config") as cfg:
+    with open("secrets/master.config") as cfg:
         for line in cfg:
             line = line.strip("\n")
             split = line.split(":", 1)
@@ -13,7 +13,7 @@ def return_guild():
     roles = {}
     validated = False
     frame = 1
-    with open("guild.config") as file:
+    with open("secrets/guild.config") as file:
         for line in file:
             line = line.strip("\n")
             kv = line.split(":")

@@ -1,0 +1,8 @@
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+secrets/
+venv/
+.env*
+master.config
