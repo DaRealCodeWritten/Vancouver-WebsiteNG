@@ -53,7 +53,7 @@ manager.init_app(app)
 active_users = {}
 active_events = {}
 database = connect(
-    host="localhost",
+    host="host.docker.internal",
     user=app_config["DATABASE_USER"],
     password=app_config["DATABASE_PASSWORD"],
     database="czvr"
@@ -287,4 +287,4 @@ async def login():
 
 
 if __name__ == "__main__":
-    app.run("0.0.0.0", 443, ssl_context=context)
+    app.run("0.0.0.0", 443, ssl_context=context, debug=True)
