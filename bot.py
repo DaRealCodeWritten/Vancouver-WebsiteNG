@@ -47,7 +47,7 @@ rating_table = guilds["GUILD_ROLES"]
 bot = commands.Bot(command_prefix=["!"], case_insensitive=True, intents=discord.Intents.all())
 db = mysql.connector.connect(
     user=config["DATABASE_USER"],
-    host="localhost",
+    host="host.docker.internal",
     password=config["DATABASE_PASSWORD"],
     database="czvr"
 )
