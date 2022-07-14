@@ -10,5 +10,6 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 COPY . .
 
-EXPOSE 443
+EXPOSE 6880
+EXPOSE 6881
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

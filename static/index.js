@@ -1,3 +1,4 @@
 function DropDownClick() {
-    var controllers = document.getElementById()
+    var controllers = document.getElementById();
+    controllers.style.display = "block";
 }

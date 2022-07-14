@@ -1,4 +1,3 @@
-import asyncio
 import ssl
 import os
 from traceback import format_exception
@@ -6,11 +5,11 @@ from socketio.asyncio_client import AsyncClient
 from utils.configreader import config
 from utils.perms import PermissionsManagement
 from werkzeug.utils import secure_filename
-from requests import post, get
+from requests import post, get, put
 from mysql.connector import connect
 from flask_login.utils import LocalProxy
 from flask import request, redirect, Flask, render_template, Response, abort, url_for, send_file, flash
-from flask_login import current_user, login_user, logout_user, UserMixin, AnonymousUserMixin, LoginManager
+from flask_login import current_user, login_user, logout_user, UserMixin, AnonymousUserMixin, LoginManager, login_required
 
 
 class ActiveUser(UserMixin):
@@ -42,8 +41,6 @@ def to_user_object(user: ActiveUser | LocalProxy) -> ActiveUser:  # Convert a Lo
 
 
 sock = AsyncClient()
-context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-context.load_cert_chain("secrets/cert.pem", "secrets/key.key")
 app_config = config()
 app = Flask(__name__)
 app.secret_key = app_config["FLASK_CLIENT_SECRET"]
@@ -110,11 +107,6 @@ async def index():
         return render_template("index/index_active.html", welcome=f"{current_user.name}")
 
 
-@app.route("/api/v1/coffee/brew-coffee")
-async def brew_coffee():
-    return abort(Response("I'm a teapot", 418))
-
-
 @app.route('/favicon.ico')
 async def favicon():
     return redirect("/static/favicon.ico")
@@ -127,7 +119,7 @@ async def delete_user():
     else:
         cuser = to_user_object(current_user)
         cursor = database.cursor()
-        cursor.execute(f"DELETE FROM {app_config['DATABASE_TABLE']} WHERE cid = ?", (cuser.cid,))
+        cursor.execute(f"DELETE FROM {app_config['DATABASE_TABLE']} WHERE cid = %s", (cuser.cid,))
         database.commit()
         logout_user()
         active_users.pop(cuser.cid)
@@ -137,10 +129,10 @@ async def delete_user():
         return msg
 
 
-@app.route("/uploads/files")
+@app.route("/cdn/files")
 async def uploads():
     try:
-        return send_file(os.path.join(app.root_path, "uploads/") + request.args.get("file"), as_attachment=True)
+        return send_file(os.path.join(app.root_path, "cdn/") + request.args.get("file"), as_attachment=True)
     except FileNotFoundError:
         return abort(Response("File not found.", 404))
     except TypeError:
@@ -168,7 +160,7 @@ def upload_file():
             return redirect(request.url)
         if file:
             filename = secure_filename(file.filename)
-            file.save(os.path.join(os.path.join(app.root_path, "uploads"), filename))
+            file.save(os.path.join(os.path.join(app.root_path, "cdn"), filename))
             flash("File successfully uploaded", "message")
             return redirect(url_for("/"))
     return '''
@@ -217,6 +209,13 @@ async def logout():
         return redirect("/")
 
 
+@app.route("/err")
+async def raiser():
+    headers = request.headers
+    raise
+    return "yes"
+
+
 @app.route("/profile")
 async def profile():
     if not current_user.is_authenticated:  # User is not logged in, send to login page
@@ -258,7 +257,7 @@ async def login():
         else:
             name = personal["name_first"]
         cursor = database.cursor(buffered=True)
-        cursor.execute(f"SELECT * FROM {app_config['DATABASE_TABLE']} WHERE cid = ?", (cid,))
+        cursor.execute(f"SELECT * FROM {app_config['DATABASE_TABLE']} WHERE cid = %s", (cid,))
         if cursor.rowcount == 0:
             pass
         else:
@@ -267,7 +266,7 @@ async def login():
         cursor.close()
         ncursor = database.cursor()
         ncursor.execute(
-            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES (?, NULL, ?, NULL, NULL) ON DUPLICATE KEY UPDATE rating = ?",
+            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES (%s, NULL, %s, NULL, NULL) ON DUPLICATE KEY UPDATE rating = %s",
             (
                 cid,
                 rating,
@@ -286,5 +285,50 @@ async def login():
     return redirect("/")
 
 
+@app.route('/callback/discord/', methods=["GET",])
+@login_required
+def authorized_discord():
+    """Callback URI from Discord OAuth"""
+    data = {
+        "code": request.args.get("code"),
+        "client_id": config["CLIENT_ID"],
+        "client_secret": config["CLIENT_SECRET"],
+        "grant_type": "authorization_code",
+        "redirect_uri": "https://czvr-bot.xyz/callback/discord"
+    }
+    header = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    r = post("https://discord.com/api/oauth2/token", headers=header, data=data)
+    data = r.json()
+    token = data.get("access_token")
+    if token is None:
+        return data
+    header["Authorization"] = f"Bearer {token}"
+    udata = get("https://discord.com/api/users/@me", headers=header)
+    uid = udata.json().get("id")
+    if uid is None:
+        return abort(403)
+    crs = database.cursor()
+    try:
+        crs.execute(
+            f"UPDATE {config['DATABASE_TABLE']} SET dcid = $1 WHERE cid = $2 USING {uid}, {current_user.get_id()}"
+        )
+        crs.close()
+        database.commit()
+        header["Content-Type"] = "application/json"
+        header["Authorization"] = app_config["TOKEN"]
+        data = {
+            "access_token": f"Bearer {token}"
+        }
+        put(f"https://discord.com/api/guilds/947764065118335016/members/{uid}", data=data, headers=header)
+    except Exception as e:
+        print(e)
+    finally:
+        crs.close()
+        database.commit()
+    return redirect(url_for("profile"))
+
+
 if __name__ == "__main__":
-    app.run("0.0.0.0", 443, ssl_context=context, debug=True)
+    app.run("0.0.0.0", 6880, debug=True)
