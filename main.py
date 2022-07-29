@@ -1,6 +1,6 @@
-import ssl
 import os
 from traceback import format_exception
+from string import Template
 from socketio.asyncio_client import AsyncClient
 from utils.configreader import config
 from utils.perms import PermissionsManagement
@@ -198,6 +198,40 @@ async def roster():
                                )
 
 
+@app.route("/roster/manage", methods=["GET", "POST"])
+async def manage():
+    if to_user_object(current_user).is_authenticated:
+        cid = request.args.get("cid")
+        if cid is None:
+            return render_template("roaster/manage_roster.html")
+        else:
+            curs = database.cursor(buffered=True)
+            temp = Template("SELECT * FROM $table WHERE cid = $cid")
+            sub = temp.substitute({"table": app_config["DATABASE_TABLE"], "cid": cid})
+            curs.execute(sub)
+            if curs.rowcount == 0:
+                return abort(404)
+            else:
+                curs.close()
+                ccurs = database.cursor(buffered=True)
+                ntemp = Template("SELECT * FROM $table WHERE cid = $cid")
+                nsub = ntemp.substitute({"table": app_config["DATABASE_CERT_TABLE"], "cid": cid})
+                ccurs.execute(nsub)
+                if ccurs.rowcount == 0 or ccurs.rowcount > 1:
+                    return abort(500)
+                res = list(ccurs)
+                kwargs = {
+                    "cid": cid,
+                    "certs": res[0][4],
+                    "visitor": res[0][3],
+                    "rating": res[0][2],
+                    "name": res[0][1]
+                }
+                return render_template(f"roaster/manage_roaster_student.html", **kwargs)
+    else:
+        return abort(401)
+
+
 @app.route("/logout")
 async def logout():
     if current_user.is_authenticated:
@@ -266,11 +300,10 @@ async def login():
         cursor.close()
         ncursor = database.cursor()
         ncursor.execute(
-            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES (%s, NULL, %s, NULL, NULL) ON DUPLICATE KEY UPDATE rating = %s",
+            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES (%s, NULL, NULL) ON DUPLICATE KEY UPDATE cid = %s",
             (
                 cid,
-                rating,
-                rating
+                cid
             )
         )
         ncursor.close()
@@ -285,14 +318,14 @@ async def login():
     return redirect("/")
 
 
-@app.route('/callback/discord/', methods=["GET",])
+@app.route('/callback/discord', methods=["GET",])
 @login_required
 def authorized_discord():
     """Callback URI from Discord OAuth"""
     data = {
         "code": request.args.get("code"),
-        "client_id": config["CLIENT_ID"],
-        "client_secret": config["CLIENT_SECRET"],
+        "client_id": app_config["DISCORD_CLIENT_ID"],
+        "client_secret": app_config["DISCORD_CLIENT_SECRET"],
         "grant_type": "authorization_code",
         "redirect_uri": "https://czvr-bot.xyz/callback/discord"
     }
@@ -303,27 +336,36 @@ def authorized_discord():
     data = r.json()
     token = data.get("access_token")
     if token is None:
-        return data
+        return str(data.json()) + ' ' + 'token get'
     header["Authorization"] = f"Bearer {token}"
     udata = get("https://discord.com/api/users/@me", headers=header)
     uid = udata.json().get("id")
     if uid is None:
-        return abort(403)
+        return str(udata.json()) + ' ' + 'user get'
     crs = database.cursor()
     try:
         crs.execute(
-            f"UPDATE {config['DATABASE_TABLE']} SET dcid = $1 WHERE cid = $2 USING {uid}, {current_user.get_id()}"
+            f"UPDATE {app_config['DATABASE_TABLE']} SET dcid = %s WHERE cid = %s",
+            (
+                uid,
+                to_user_object(current_user).cid
+            )
         )
         crs.close()
         database.commit()
-        header["Content-Type"] = "application/json"
-        header["Authorization"] = app_config["TOKEN"]
-        data = {
-            "access_token": f"Bearer {token}"
+        auth = f"Bot {app_config['BOT_TOKEN']}"
+        head = {
+            "Content-Type": "application/json",
+            "Authorization": auth
         }
-        put(f"https://discord.com/api/guilds/947764065118335016/members/{uid}", data=data, headers=header)
+        data = {
+            "access_token": str(token)
+        }
+        resp = put(f"https://discord.com/api/guilds/947764065118335016/members/{uid}", json=data, headers=head)
+        print(str(resp.json()))
     except Exception as e:
         print(e)
+        print(resp.json())
     finally:
         crs.close()
         database.commit()

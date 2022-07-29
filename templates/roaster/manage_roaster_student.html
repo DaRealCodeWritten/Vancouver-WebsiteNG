@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage {{ cid }}</title>
+    <script src="{{ url_for('static', filename='manage_roster.js') }}"></script>
+</head>
+<body onload="certs2HTML()">
+    <data value='{{certs}}' id="certs-data-raw"></data>
+    <table>
+        <tr>
+            <th>CID</th>
+            <th>Name</th>
+            <th>Rating</th>
+            <th>Type</th>
+            <th>DEL</th>
+            <th>GND</th>
+            <th>TWR</th>
+            <th>DEP</th>
+            <th>APP</th>
+            <th>CTR</th>
+        </tr>
+        <tr>
+            <th>{{cid}}</th>
+            <th>{{name}}</th>
+            <th>{{rating}}</th>
+            <th>{{visitor}}</th>
+            <th><p id="del-cert">wait</p></th>
+            <th><p id="gnd-cert">wait</p></th>
+            <th><p id="twr-cert">wait</p></th>
+            <th><p id="dep-cert">wait</p></th>
+            <th><p id="app-cert">wait</p></th>
+            <th><p id="ctr-cert">wait</p></th>
+        </tr>
+    </table>
+</body>
+</html>
