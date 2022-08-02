@@ -13,6 +13,7 @@ from flask_login import current_user, login_user, logout_user, UserMixin, Anonym
 
 
 class ActiveUser(UserMixin):
+    """Helper class for logged in users"""
     def __init__(self, cid: int, rating: int, name: str = None):
         self.cid = cid
         self.rating = rating
@@ -60,6 +61,7 @@ perms = PermissionsManagement(database)
 
 @sock.on("EVENT POSTED")
 async def new_event(data):
+    """An event was published from Discord, pull it from the database"""
     uuid = data["uuid"]
     cursor = database.cursor()
     cursor.execute("SELECT * FROM events WHERE uuid = ?", (uuid,))
@@ -86,6 +88,7 @@ async def new_event(data):
 
 @sock.on("EVENT DELETED")
 async def delete_event(data):
+    """An event was deleted from Discord, delete it from the site"""
     uuid = data["uuid"]
     if uuid in active_events:
         del active_events[uuid]
@@ -96,11 +99,13 @@ async def delete_event(data):
 
 @manager.user_loader
 def load_user(user_id: int):
+    """Finds and returns a user object from the active_users dictionary"""
     return active_users.get(int(user_id))
 
 
 @app.route("/")
 async def index():
+    """Index page for the website"""
     if current_user.is_authenticated is False:  # User is not logged in
         return render_template("index/index.html")
     else:  # User is logged in
@@ -109,11 +114,13 @@ async def index():
 
 @app.route('/favicon.ico')
 async def favicon():
+    """Favicon is not served from the root directory so redirect to static/favicon.ico"""
     return redirect("/static/favicon.ico")
 
 
 @app.route("/delete_user")
 async def delete_user():
+    """Deletes a logged in user from the user database, but not from the roster (I hardly know'er)"""
     if current_user.is_authenticated is False:
         return abort(Response("You are not logged in.", 401))
     else:
@@ -131,6 +138,7 @@ async def delete_user():
 
 @app.route("/cdn/files")
 async def uploads():
+    """Returns an uploaded file based on the file= arg"""
     try:
         return send_file(os.path.join(app.root_path, "cdn/") + request.args.get("file"), as_attachment=True)
     except FileNotFoundError:
@@ -141,6 +149,7 @@ async def uploads():
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
+    """Upload a file"""
     cuser = to_user_object(current_user)
     if cuser is False:
         return abort(Response("You are not logged in.", 401))
@@ -176,6 +185,9 @@ def upload_file():
 
 @app.route("/roster")
 async def roster():
+    """
+    Shows the roster for the Vancouver FIR
+    """
     if current_user.is_authenticated is False:
         return render_template("roaster/roster.html",
                                permissions="None",
@@ -200,6 +212,9 @@ async def roster():
 
 @app.route("/roster/manage", methods=["GET", "POST"])
 async def manage():
+    """
+    Manage a given student, or provide a search function if a student's CID is not provided
+    """
     if to_user_object(current_user).is_authenticated:
         if request.method == "POST":
             form = request.form
@@ -212,6 +227,8 @@ async def manage():
                 form.get("CTR")
             ]
             cid = request.args.get("cid")
+            if cid is None:
+                return abort(Response("CID was not provided", 400))
             cursor = database.cursor(buffered=True)
             cursor.execute(f"SELECT certs FROM {app_config['DATABASE_CERT_TABLE']} WHERE cid = %s", (cid,))
             result = list(str(list(cursor)[0][0]))
@@ -265,6 +282,10 @@ async def manage():
 
 @app.route("/logout")
 async def logout():
+    """
+    Logs out the user from the website if they're authenticated
+    Redirects them to the index if they aren't, or if they're logged out successfully
+    """
     if current_user.is_authenticated:
         cuser = to_user_object(current_user)
         logout_user()
@@ -283,6 +304,9 @@ async def raiser():
 
 @app.route("/profile")
 async def profile():
+    """
+    Profile page for the logged in user, redirects them to OAuth if they are not logged in
+    """
     if not current_user.is_authenticated:  # User is not logged in, send to login page
         return redirect(
             "https://auth-dev.vatsim.net/oauth/authorize?client_id=383&redirect_uri=https%3A%2F%2Fczvr-bot.xyz%2Fcallback%2Fvatsim&response_type=code&scope=full_name+vatsim_details")
@@ -291,6 +315,9 @@ async def profile():
 
 @app.route("/callback/vatsim")
 async def login():
+    """
+    VATSIM callback endpoint for logins
+    """
     try:
         code = request.args.get("code")
         if code is None:  # User did not authorize, or something went wrong
