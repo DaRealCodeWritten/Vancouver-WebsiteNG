@@ -201,6 +201,37 @@ async def roster():
 @app.route("/roster/manage", methods=["GET", "POST"])
 async def manage():
     if to_user_object(current_user).is_authenticated:
+        if request.method == "POST":
+            form = request.form
+            newcert = [
+                form.get("DEL"),
+                form.get("GND"),
+                form.get("TWR"),
+                form.get("DEP"),
+                form.get("APP"),
+                form.get("CTR")
+            ]
+            cid = request.args.get("cid")
+            cursor = database.cursor(buffered=True)
+            cursor.execute(f"SELECT certs FROM {app_config['DATABASE_CERT_TABLE']} WHERE cid = %s", (cid,))
+            result = list(str(list(cursor)[0][0]))
+            cursor.close()
+            if len(result) == 1:
+                result = ["0", "0", "0", "0", "0", "0"]
+            const = []
+            for i in range(6):
+                cert = newcert[i]
+                old = result[i]
+                if cert is None:
+                    const.append(old)
+                else:
+                    const.append(cert)
+            certstring = "".join(const)
+            ncurs = database.cursor()
+            ncurs.execute(f"UPDATE {app_config['DATABASE_CERT_TABLE']} SET certs = %s WHERE cid = %s", (certstring, cid))
+            ncurs.close()
+            database.commit()
+            return redirect("/")
         cid = request.args.get("cid")
         if cid is None:
             return render_template("roaster/manage_roster.html")
@@ -300,10 +331,11 @@ async def login():
         cursor.close()
         ncursor = database.cursor()
         ncursor.execute(
-            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES (%s, NULL, NULL) ON DUPLICATE KEY UPDATE cid = %s",
+            f"INSERT INTO {app_config['DATABASE_TABLE']} VALUES (%s, NULL, %s, NULL) ON DUPLICATE KEY UPDATE rating = %s",
             (
                 cid,
-                cid
+                rating,
+                rating
             )
         )
         ncursor.close()

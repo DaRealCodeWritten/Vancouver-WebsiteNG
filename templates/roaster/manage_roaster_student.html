@@ -2,17 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Manage {{ cid }}</title>
+    <title>Manage {{ name }}</title>
     <script src="{{ url_for('static', filename='manage_roster.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='manage_roaster_student.css') }}">
 </head>
-<body onload="certs2HTML()">
+<body onload="certs2HTML(); rawToPretty()">
     <data value='{{certs}}' id="certs-data-raw"></data>
-    <table>
+    <data value="{{rating}}" id="rating-data-raw"></data>
+    <data value="{{visitor}}" id="visitor-data-raw"></data>
+    <div class="title-div">
+        <h1>Alter certifications for {{name}}</h1>
+    </div>
+    <div class="table-div">
+    <table class="cert-table">
         <tr>
             <th>CID</th>
             <th>Name</th>
             <th>Rating</th>
-            <th>Type</th>
+            <th>Visitor?</th>
             <th>DEL</th>
             <th>GND</th>
             <th>TWR</th>
@@ -21,17 +28,89 @@
             <th>CTR</th>
         </tr>
         <tr>
-            <th>{{cid}}</th>
-            <th>{{name}}</th>
-            <th>{{rating}}</th>
-            <th>{{visitor}}</th>
-            <th><p id="del-cert">wait</p></th>
-            <th><p id="gnd-cert">wait</p></th>
-            <th><p id="twr-cert">wait</p></th>
-            <th><p id="dep-cert">wait</p></th>
-            <th><p id="app-cert">wait</p></th>
-            <th><p id="ctr-cert">wait</p></th>
+            <td>{{cid}}</td>
+            <td>{{name}}</td>
+            <td class="cell"><p id="rating">wait</p></td>
+            <td class="cell"><p id="visitor">wait</p></td>
+            <td class="cell"><p id="del-cert">wait</p></td>
+            <td class="cell"><p id="gnd-cert">wait</p></td>
+            <td class="cell"><p id="twr-cert">wait</p></td>
+            <td class="cell"><p id="dep-cert">wait</p></td>
+            <td class="cell"><p id="app-cert">wait</p></td>
+            <td class="cell"><p id="ctr-cert">wait</p></td>
         </tr>
     </table>
+    </div>
+    <nav class="cert-nav">
+        <form id="mod-student" class="mod-stu">
+            <button type="button" onclick="switchThis('DEL')" id="DEL-BTN">Clearance Delivery</button>
+            <button type="button" onclick="switchThis('GND')" id="GND-BTN">Ground</button>
+            <button type="button" onclick="switchThis('TWR')" id="TWR-BTN">Tower</button>
+            <button type="button" onclick="switchThis('DEP')" id="DEP-BTN">Departure</button>
+            <button type="button" onclick="switchThis('APP')" id="APP-BTN">Arrivals</button>
+            <button type="button" onclick="switchThis('CTR')" id="CTR-BTN">Center</button>
+            <div class="DEL" id="DEL-DIV">
+                <input type="radio" id="no-cert-del" value="0" name="DEL">
+                <label for="no-cert-del">Not Certified</label>
+                <input type="radio" id="train-cert-del" value="1" name="DEL">
+                <label for="train-cert-del">In Training</label>
+                <input type="radio" id="solo-cert-del" value="2" name="DEL">
+                <label for="solo-cert-del">Solo Certified</label>
+                <input type="radio" id="cert-del" value="3" name="DEL">
+                <label for="cert-del">Certified</label>
+            </div>
+            <div class="GND" id="GND-DIV">
+                <input type="radio" id="no-cert-gnd" value="0" name="GND">
+                <label for="no-cert-gnd">Not Certified</label>
+                <input type="radio" id="train-cert-gnd" value="1" name="GND">
+                <label for="train-cert-gnd">In Training</label>
+                <input type="radio" id="solo-cert-gnd" value="2" name="GND">
+                <label for="solo-cert-gnd">Solo Certified</label>
+                <input type="radio" id="cert-gnd" value="3" name="GND">
+                <label for="cert-gnd">Certified</label>
+            </div>
+            <div class="TWR" id="TWR-DIV">
+                <input type="radio" id="no-cert-twr" value="0" name="TWR">
+                <label for="no-cert-twr">Not Certified</label>
+                <input type="radio" id="train-cert-twr" value="1" name="TWR">
+                <label for="train-cert-twr">In Training</label>
+                <input type="radio" id="solo-cert-twr" value="2" name="TWR">
+                <label for="solo-cert-twr">Solo Certified</label>
+                <input type="radio" id="cert-twr" value="3" name="TWR">
+                <label for="cert-twr">Certified</label>
+            </div>
+            <div class="DEP" id="DEP-DIV">
+                <input type="radio" id="no-cert-dep" value="0" name="DEP">
+                <label for="no-cert-dep">Not Certified</label>
+                <input type="radio" id="train-cert-dep" value="1" name="DEP">
+                <label for="train-cert-dep">In Training</label>
+                <input type="radio" id="solo-cert-dep" value="2" name="DEP">
+                <label for="solo-cert-dep">Solo Certified</label>
+                <input type="radio" id="cert-dep" value="3" name="DEP">
+                <label for="cert-dep">Certified</label>
+            </div>
+            <div class="APP" id="APP-DIV">
+                <input type="radio" id="no-cert-app" value="0" name="APP">
+                <label for="no-cert-app">Not Certified</label>
+                <input type="radio" id="train-cert-app" value="1" name="APP">
+                <label for="train-cert-app">In Training</label>
+                <input type="radio" id="solo-cert-app" value="2" name="APP">
+                <label for="solo-cert-app">Solo Certified</label>
+                <input type="radio" id="cert-app" value="3" name="APP">
+                <label for="cert-app">Certified</label>
+            </div>
+            <div class="CTR" id="CTR-DIV">
+                <input type="radio" id="no-cert-ctr" value="0" name="CTR">
+                <label for="no-cert-ctr">Not Certified</label>
+                <input type="radio" id="train-cert-ctr" value="1" name="CTR">
+                <label for="train-cert-ctr">In Training</label>
+                <input type="radio" id="solo-cert-ctr" value="2" name="CTR">
+                <label for="solo-cert-ctr">Solo Certified</label>
+                <input type="radio" id="cert-ctr" value="3" name="CTR">
+                <label for="cert-ctr">Certified</label>
+            </div>
+            <button type="submit" class="submit-changes" id="submit-cert" formmethod="post">Submit &#10003;</button>
+        </form>
+    </nav>
 </body>
 </html>
