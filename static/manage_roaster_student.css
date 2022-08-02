@@ -1,0 +1,70 @@
+.cert-table p {
+    border-radius: 5px;
+}
+
+.cert-table th,tr,td {
+    border: 1px solid black;
+    justify-content: center;
+}
+
+.cert-table td {
+    text-align: center;
+}
+
+.cell {
+    background-color: red;
+}
+
+.title-div {
+    display: flex;
+    justify-content: center;
+}
+
+.table-div {
+    display: flex;
+    justify-content: center;
+}
+
+.cert-nav {
+    display: flex;
+    width: 100%;
+    height: 40px;
+    background-color: #013162;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.submit-changes {
+    background: none;
+}
+
+.cert-nav div {
+    display: none;
+    padding: 20px 30px;
+    color: white;
+    border-radius: 10px;
+    z-index: 99999;
+    border-color: black;
+    background-color: #013162;
+    position: absolute;
+}
+
+.cert-nav button {
+    cursor: pointer;
+    background: none;
+    border: none;
+    -webkit-filter: brightness(100%);
+    -webkit-transition: all 0.5s ease;
+    color: white;
+}
+
+.cert-nav button:disabled {
+    -webkit-filter: brightness(70%);
+    -webkit-transition: all 0.5s ease;
+    cursor: default;
+}
+
+.cert-table {
+    justify-self: center;
+}

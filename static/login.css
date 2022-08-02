@@ -1,0 +1,7 @@
+.error-head {
+  background-color: red;
+  opacity: 75%;
+  color: white;
+  padding: 8px 16px;
+  display: none;
+}

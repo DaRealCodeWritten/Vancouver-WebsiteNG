@@ -99,10 +99,12 @@ async def refresh_feed():
 @tasks.loop(hours=24)
 async def update_tasker():
     """Async task to update roles as needed"""
-    with db.cursor() as dbcrs:
+    with db.cursor(buffered=True) as dbcrs:
         guild: discord.Guild = bot.get_guild(int(guilds[f"GUILD_{guilds['GUILD_SETTING']}"]))
         dbcrs.execute("SELECT * FROM {}".format(config["DATABASE_TABLE"]))
         for record in dbcrs:
+            if record[1] is None:
+                continue
             member: discord.Member = await guild.fetch_member(record[1])
             if member is None:
                 # User is not part of the server or a null record was committed, ignore
@@ -129,6 +131,7 @@ async def update_tasker():
                 else:
                     role = guild.get_role(not_matching)
                     await member.remove_roles(role, reason="Automatic update")
+    dbcrs.close()
 
 
 def is_dev():
