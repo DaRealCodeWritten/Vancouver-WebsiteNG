@@ -91,10 +91,11 @@ function rawToPretty() {
 }
 
 function switchThis(toswitch) {
-    toswitch = toswitch + "-DIV";
+    let modswitch = toswitch + "-DIV";
     let tobutton = toswitch + "-BTN";
-    document.getElementById(tobutton).disabled = true;
-    let element = document.getElementById(toswitch);
+    let button = document.getElementById(tobutton);
+    button.disabled = true;
+    let element = document.getElementById(modswitch);
     let others = [
         document.getElementById("DEL-DIV"),
         document.getElementById("GND-DIV"),

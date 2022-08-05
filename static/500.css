@@ -1,0 +1,42 @@
+.background {
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+    justify-items: center;
+}
+
+h1 {
+    display: block;
+    text-align: center;
+}
+
+p {
+    display: block;
+    text-align: center;
+}
+
+.button-div {
+    display: block;
+    align-items: center;
+    align-self: center;
+    justify-self: center;
+    justify-items: center;
+}
+
+.send-me-home {
+    background-color: green;
+    display: block;
+    color: black;
+    border-radius: 5px;
+    padding: 20px 10px;
+    text-decoration: none;
+    -webkit-filter: brightness(100%);
+    -webkit-transition: all 0.5s ease;
+    text-align: center;
+    align-self: center;
+}
+
+.send-me-home:hover{
+    -webkit-filter: brightness(80%);
+    -webkit-transition: all 0.5s ease;
+}

@@ -16,7 +16,7 @@ class PermissionsManagement:
     def get_permissions(self, user_id):
         """Returns the permissions of a user."""
         cursor = self.database.cursor()
-        cursor.execute(f"SELECT permissions FROM dev WHERE cid = ?", (user_id,))
+        cursor.execute(f"SELECT permissions FROM dev WHERE cid = %s", (user_id,))
         result = cursor.fetchone()
         if result is None:
             return None, "None"
@@ -27,12 +27,12 @@ class PermissionsManagement:
     def set_permissions(self, cid, permissions):
         """Sets the permissions of a user."""
         crs = self.database.cursor()
-        crs.execute(f"SELECT permissions FROM dev WHERE cid = ?", (cid,))
+        crs.execute(f"SELECT permissions FROM dev WHERE cid = %S", (cid,))
         result = crs.fetchone()
         if result[0] == "DV":
             return False
         cursor = self.database.cursor()
-        cursor.execute(f"UPDATE dev SET permissions = ? WHERE cid = ?", (permissions, cid))
+        cursor.execute(f"UPDATE dev SET permissions = %s WHERE cid = %", (permissions, cid))
         cursor.close()
         self.database.commit()
         return True

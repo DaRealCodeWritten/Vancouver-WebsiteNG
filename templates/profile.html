@@ -7,11 +7,14 @@
 	<script src="{{ url_for('static', filename='profile.js') }}"></script>
 </head>
 <body>
-<nav class="fixed-nav-bar"> ,
+<nav class="fixed-nav-bar">
 	<button type="button" onclick="isSure()" value="False" class="delete-user" style="cursor: pointer" id="delete-user">Delete User Data</button>
-	<a class="logout" style=", cursor: pointer" href="/logout">Logout</a>
+	<a class="logout" style="cursor: pointer" href="/logout">Logout</a>
 	<a class="delete-sure" id="delete-sure" style="cursor: pointer" href="/delete_user">Are you sure? Click here if yes</a>
-	<a class=""
 </nav>
+<div class="profile-card">
+	<p class="user-name">{{ profile }} {{ last }}</p>
+	<a class="logout-anc" href="/logout">Logout</a>
+</div>
 </body>
 </html>

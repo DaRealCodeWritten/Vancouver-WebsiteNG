@@ -39,3 +39,30 @@ a:hover {
 .delete-sure {
     display: none;
 }
+
+.profile-card {
+    display: flex;
+    position: fixed;
+    justify-content: center;
+    border: solid 1px black;
+    align-content: center;
+    align-self: center;
+}
+
+.user-name {
+    display: inline-flex;
+    font-family: sans-serif;
+}
+
+.logout-anc {
+    color: red;
+    -webkit-filter: brightness(100%);
+    -webkit-transition: all 0.5s ease;
+    cursor: pointer;
+}
+
+.logout-anc:hover {
+    -webkit-filter: brightness(70%);
+    -webkit-transition: all 0.5s ease;
+}
+

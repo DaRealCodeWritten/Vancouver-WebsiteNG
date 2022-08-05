@@ -1,4 +1,6 @@
 import os
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 from traceback import format_exception
 from string import Template
 from socketio.asyncio_client import AsyncClient
@@ -13,11 +15,12 @@ from flask_login import current_user, login_user, logout_user, UserMixin, Anonym
 
 
 class ActiveUser(UserMixin):
-    """Helper class for logged in users"""
-    def __init__(self, cid: int, rating: int, name: str = None):
+    """Helper class for logged-in users"""
+    def __init__(self, cid: int, rating: int, name: str = None, last: str = None):
         self.cid = cid
         self.rating = rating
         self.name = cid if name is None else name
+        self.last = None if last is None else last
 
     @property
     def is_authenticated(self):
@@ -57,44 +60,11 @@ database = connect(
     database="czvr"
 )
 perms = PermissionsManagement(database)
-
-
-@sock.on("EVENT POSTED")
-async def new_event(data):
-    """An event was published from Discord, pull it from the database"""
-    uuid = data["uuid"]
-    cursor = database.cursor()
-    cursor.execute("SELECT * FROM events WHERE uuid = ?", (uuid,))
-    if cursor.rowcount == 0:  # Event does not exist
-        await sock.emit("ACK", {"status": "error", "message": "ERR_EVENT_MISSING"})
-        return
-    else:  # Event exists, add to active events
-        constructor = {}
-        entry = list(cursor)[0]
-        name = entry[1]
-        banner_url = entry[2]
-        description = entry[3]
-        start_time = entry[4]
-        end_time = entry[5]
-        constructor["name"] = name
-        constructor["banner_url"] = banner_url
-        constructor["description"] = description
-        constructor["start_time"] = start_time
-        constructor["end_time"] = end_time
-        constructor["uuid"] = uuid
-        active_events[uuid] = constructor
-        await sock.emit("ACK", {"status": "success"})
-
-
-@sock.on("EVENT DELETED")
-async def delete_event(data):
-    """An event was deleted from Discord, delete it from the site"""
-    uuid = data["uuid"]
-    if uuid in active_events:
-        del active_events[uuid]
-        await sock.emit("ACK", {"status": "success"})
-    else:
-        await sock.emit("ACK", {"status": "error"})
+sentry_sdk.init(
+    dsn="https://29825d826a3b4a07a5c4d7c2b70a8355@o1347372.ingest.sentry.io/6625912",
+    traces_sample_rate=1.0,
+    integrations=[FlaskIntegration(),]
+)
 
 
 @manager.user_loader
@@ -116,6 +86,11 @@ async def index():
 async def favicon():
     """Favicon is not served from the root directory so redirect to static/favicon.ico"""
     return redirect("/static/favicon.ico")
+
+
+@app.route("/errorhandler")
+async def handler(): # Handler? I hardly know'er!
+    return render_template("error_500.html")
 
 
 @app.route("/delete_user")
@@ -243,12 +218,12 @@ async def manage():
                     const.append(old)
                 else:
                     const.append(cert)
-            certstring = "".join(const)
+            cert_string = "".join(const)
             ncurs = database.cursor()
-            ncurs.execute(f"UPDATE {app_config['DATABASE_CERT_TABLE']} SET certs = %s WHERE cid = %s", (certstring, cid))
+            ncurs.execute(f"UPDATE {app_config['DATABASE_CERT_TABLE']} SET certs = %s WHERE cid = %s", (cert_string, cid))
             ncurs.close()
             database.commit()
-            return redirect("/")
+            return redirect(request.url)
         cid = request.args.get("cid")
         if cid is None:
             return render_template("roaster/manage_roster.html")
@@ -277,7 +252,9 @@ async def manage():
                 }
                 return render_template(f"roaster/manage_roaster_student.html", **kwargs)
     else:
-        return abort(401)
+        resp = redirect("https://auth-dev.vatsim.net/oauth/authorize?client_id=383&redirect_uri=https%3A%2F%2Fczvr-bot.xyz%2Fcallback%2Fvatsim&response_type=code&scope=full_name+vatsim_details")
+        resp.set_cookie("redirect_url_for", request.url, httponly=True)
+        return resp
 
 
 @app.route("/logout")
@@ -308,9 +285,10 @@ async def profile():
     Profile page for the logged in user, redirects them to OAuth if they are not logged in
     """
     if not current_user.is_authenticated:  # User is not logged in, send to login page
-        return redirect(
-            "https://auth-dev.vatsim.net/oauth/authorize?client_id=383&redirect_uri=https%3A%2F%2Fczvr-bot.xyz%2Fcallback%2Fvatsim&response_type=code&scope=full_name+vatsim_details")
-    return render_template("profile.html", profile=current_user.name, )
+        resp = redirect("https://auth-dev.vatsim.net/oauth/authorize?client_id=383&redirect_uri=https%3A%2F%2Fczvr-bot.xyz%2Fcallback%2Fvatsim&response_type=code&scope=full_name+vatsim_details")
+        resp.set_cookie("redirect_url_for", url_for("profile"), httponly=True)
+        return resp
+    return render_template("profile.html", profile=current_user.name, last=current_user.last)
 
 
 @app.route("/callback/vatsim")
@@ -348,6 +326,7 @@ async def login():
             name = cid
         else:
             name = personal["name_first"]
+            last = personal["name_last"]
         cursor = database.cursor(buffered=True)
         cursor.execute(f"SELECT * FROM {app_config['DATABASE_TABLE']} WHERE cid = %s", (cid,))
         if cursor.rowcount == 0:
@@ -367,13 +346,18 @@ async def login():
         )
         ncursor.close()
         database.commit()
-        user = ActiveUser(cid, rating, name)
+        user = ActiveUser(cid, rating, name, last)
         active_users[cid] = user
         login_user(user, True)
     except Exception as e:
         exc = format_exception(type(e), e, e.__traceback__)
         print(exc)
         return abort(Response("VATSIM authentication failed", 400))
+    redir = request.cookies.get("redirect_url_for")
+    if redir is not None and redir != "":
+        resp = redirect(redir)
+        resp.set_cookie("redirect_url_for", "")
+        return resp
     return redirect("/")
 
 
