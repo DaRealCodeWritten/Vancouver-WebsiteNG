@@ -1,11 +1,11 @@
 import os
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
-from traceback import format_exception
 from string import Template
 from socketio.asyncio_client import AsyncClient
 from utils.configreader import config
 from utils.perms import PermissionsManagement
+from utils.raw_converter import upref_to_dict
 from werkzeug.utils import secure_filename
 from requests import post, get, put
 from mysql.connector import connect
@@ -60,10 +60,10 @@ database = connect(
     database="czvr"
 )
 perms = PermissionsManagement(database)
-sentry_sdk.init(
+sentry = sentry_sdk.init(
     dsn="https://29825d826a3b4a07a5c4d7c2b70a8355@o1347372.ingest.sentry.io/6625912",
     traces_sample_rate=1.0,
-    integrations=[FlaskIntegration(),]
+    integrations=[FlaskIntegration(), ]
 )
 
 
@@ -89,15 +89,15 @@ async def favicon():
 
 
 @app.route("/errorhandler")
-async def handler(): # Handler? I hardly know'er!
+async def handler():  # Handler? I hardly know'er!
     return render_template("error_500.html")
 
 
 @app.route("/delete_user")
 async def delete_user():
-    """Deletes a logged in user from the user database, but not from the roster (I hardly know'er)"""
+    """Deletes a logged-in user from the user database, but not from the roster (I hardly know'er)"""
     if current_user.is_authenticated is False:
-        return abort(Response("You are not logged in.", 401))
+        return redirect("/")
     else:
         cuser = to_user_object(current_user)
         cursor = database.cursor()
@@ -272,17 +272,10 @@ async def logout():
         return redirect("/")
 
 
-@app.route("/err")
-async def raiser():
-    headers = request.headers
-    raise
-    return "yes"
-
-
 @app.route("/profile")
 async def profile():
     """
-    Profile page for the logged in user, redirects them to OAuth if they are not logged in
+    Profile page for the logged-in user, redirects them to OAuth if they are not logged in
     """
     if not current_user.is_authenticated:  # User is not logged in, send to login page
         resp = redirect("https://auth-dev.vatsim.net/oauth/authorize?client_id=383&redirect_uri=https%3A%2F%2Fczvr-bot.xyz%2Fcallback%2Fvatsim&response_type=code&scope=full_name+vatsim_details")
@@ -299,7 +292,7 @@ async def login():
     try:
         code = request.args.get("code")
         if code is None:  # User did not authorize, or something went wrong
-            return abort(Response("VATSIM authentication was aborted", 400))
+            return redirect(url_for("errorhandler"))
         rqst = {
             "code": code,
             "client_id": app_config["VATSIM_CLIENT_ID"],
@@ -310,7 +303,7 @@ async def login():
         resp = post("https://auth-dev.vatsim.net/oauth/token", data=rqst)
         token = resp.json().get("access_token")
         if token is None:  # Endpoint returned an error or something went wrong
-            return abort(Response("VATSIM Token endpoint returned a malformed response", 400))
+            return redirect(url_for("errorhandler"))
         headers = {
             "Authorization": f"Bearer {token}",
             "accept": "application/json"
@@ -322,6 +315,7 @@ async def login():
         cid = int(jsdata["data"]["cid"])
         rating = int(jsdata["data"]["vatsim"]["rating"]["id"])
         personal = jsdata["data"].get("personal")
+        last = None
         if personal is None:  # User did not authorize access to personal data
             name = cid
         else:
@@ -349,10 +343,8 @@ async def login():
         user = ActiveUser(cid, rating, name, last)
         active_users[cid] = user
         login_user(user, True)
-    except Exception as e:
-        exc = format_exception(type(e), e, e.__traceback__)
-        print(exc)
-        return abort(Response("VATSIM authentication failed", 400))
+    except Exception as _:
+        return redirect(url_for("errorhandler"))
     redir = request.cookies.get("redirect_url_for")
     if redir is not None and redir != "":
         resp = redirect(redir)
@@ -361,32 +353,32 @@ async def login():
     return redirect("/")
 
 
-@app.route('/callback/discord', methods=["GET",])
+@app.route('/callback/discord', methods=["GET", ])
 @login_required
 def authorized_discord():
-    """Callback URI from Discord OAuth"""
-    data = {
-        "code": request.args.get("code"),
-        "client_id": app_config["DISCORD_CLIENT_ID"],
-        "client_secret": app_config["DISCORD_CLIENT_SECRET"],
-        "grant_type": "authorization_code",
-        "redirect_uri": "https://czvr-bot.xyz/callback/discord"
-    }
-    header = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    r = post("https://discord.com/api/oauth2/token", headers=header, data=data)
-    data = r.json()
-    token = data.get("access_token")
-    if token is None:
-        return str(data.json()) + ' ' + 'token get'
-    header["Authorization"] = f"Bearer {token}"
-    udata = get("https://discord.com/api/users/@me", headers=header)
-    uid = udata.json().get("id")
-    if uid is None:
-        return str(udata.json()) + ' ' + 'user get'
-    crs = database.cursor()
     try:
+        """Callback URI from Discord OAuth"""
+        data = {
+            "code": request.args.get("code"),
+            "client_id": app_config["DISCORD_CLIENT_ID"],
+            "client_secret": app_config["DISCORD_CLIENT_SECRET"],
+            "grant_type": "authorization_code",
+            "redirect_uri": "https://czvr-bot.xyz/callback/discord"
+        }
+        header = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        r = post("https://discord.com/api/oauth2/token", headers=header, data=data)
+        data = r.json()
+        token = data.get("access_token")
+        if token is None:
+            return str(data.json()) + ' ' + 'token get'
+        header["Authorization"] = f"Bearer {token}"
+        udata = get("https://discord.com/api/users/@me", headers=header)
+        uid = udata.json().get("id")
+        if uid is None:
+            return str(udata.json()) + ' ' + 'user get'
+        crs = database.cursor()
         crs.execute(
             f"UPDATE {app_config['DATABASE_TABLE']} SET dcid = %s WHERE cid = %s",
             (
@@ -406,12 +398,14 @@ def authorized_discord():
         }
         resp = put(f"https://discord.com/api/guilds/947764065118335016/members/{uid}", json=data, headers=head)
         print(str(resp.json()))
-    except Exception as e:
-        print(e)
-        print(resp.json())
+    except Exception as _:
+        return redirect(url_for("errorhandler"))
     finally:
-        crs.close()
-        database.commit()
+        try:
+            crs.close()
+            database.commit()
+        except Exception as _:
+            pass
     return redirect(url_for("profile"))
 
 

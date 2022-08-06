@@ -97,6 +97,23 @@ async def refresh_feed():
 
 
 @tasks.loop(hours=24)
+async def pull_new_certs():
+    try:
+        headers = {
+            "Authorization": config["VATCAN_API_KEY"],
+            "Accept": "application/json"
+        }    
+        data = request.get("https://vatcan.ca/api/v2/facility/roster", headers=headers)
+        inner = data.get("data")
+        if inner is None:
+            raise ValueError("VATCAN API encountered an error")
+        else:
+            for data in inner["controllers"]:
+                
+        
+
+
+@tasks.loop(hours=24)
 async def update_tasker():
     """Async task to update roles as needed"""
     with db.cursor(buffered=True) as dbcrs:
