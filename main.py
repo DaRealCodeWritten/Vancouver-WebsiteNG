@@ -1,8 +1,11 @@
 import os
+import sys
 import sentry_sdk
+import logging
+from sentry_sdk import capture_exception
 from sentry_sdk.integrations.flask import FlaskIntegration
 from string import Template
-from socketio.asyncio_client import AsyncClient
+from flask_socketio import SocketIO
 from utils.configreader import config
 from utils.perms import PermissionsManagement
 from utils.raw_converter import upref_to_dict
@@ -44,10 +47,11 @@ def to_user_object(user: ActiveUser | LocalProxy) -> ActiveUser:  # Convert a Lo
     return user._get_current_object()
 
 
-sock = AsyncClient()
+logging.basicConfig(level=logging.DEBUG)
 app_config = config()
 app = Flask(__name__)
 app.secret_key = app_config["FLASK_CLIENT_SECRET"]
+sock = SocketIO(app, cors_allowed_origins="*")
 manager = LoginManager()
 manager.anonymous_user = AnonymousUser
 manager.init_app(app)
@@ -59,12 +63,22 @@ database = connect(
     password=app_config["DATABASE_PASSWORD"],
     database="czvr"
 )
+database.autocommit = True
 perms = PermissionsManagement(database)
 sentry = sentry_sdk.init(
     dsn="https://29825d826a3b4a07a5c4d7c2b70a8355@o1347372.ingest.sentry.io/6625912",
     traces_sample_rate=1.0,
     integrations=[FlaskIntegration(), ]
 )
+
+
+@sock.on("REQUEST ROSTER")
+def roster(data: dict):
+    key = data["uuid"]
+    curs = database.cursor(buffered=True)
+    curs.execute(f"SELECT * FROM {app_config['DATABASE_CERT_TABLE']} ORDER BY realname")
+    prepared = list(curs)
+    sock.emit("ROSTER REQUEST", {"uuid": key, "roster": prepared})
 
 
 @manager.user_loader
@@ -88,6 +102,11 @@ async def favicon():
     return redirect("/static/favicon.ico")
 
 
+@app.route("/socket.io/")
+async def reroutesock():
+    return redirect("/socket.io")
+
+
 @app.route("/errorhandler")
 async def handler():  # Handler? I hardly know'er!
     return render_template("error_500.html")
@@ -101,11 +120,13 @@ async def delete_user():
     else:
         cuser = to_user_object(current_user)
         cursor = database.cursor()
+        cursor.execute(f"SELECT dcid FROM {app_config['DATABASE_TABLE']} WHERE cid = %s", (cuser.cid,))
+        dcid = int(list(cursor)[0][0])
         cursor.execute(f"DELETE FROM {app_config['DATABASE_TABLE']} WHERE cid = %s", (cuser.cid,))
         database.commit()
         logout_user()
         active_users.pop(cuser.cid)
-        # sock.emit("USER DELETED", {"cid": cuser.cid})
+        sock.emit("USER DELETED", {"cid": cuser.cid, "dcid": dcid})
         msg = "User data successfully deleted, you may now close this window or tab, "
         msg += "your data on the roster (if applicable) will NOT be deleted."
         return msg
@@ -343,7 +364,8 @@ async def login():
         user = ActiveUser(cid, rating, name, last)
         active_users[cid] = user
         login_user(user, True)
-    except Exception as _:
+    except Exception as e:
+        capture_exception(e)
         return redirect(url_for("errorhandler"))
     redir = request.cookies.get("redirect_url_for")
     if redir is not None and redir != "":
@@ -398,7 +420,8 @@ def authorized_discord():
         }
         resp = put(f"https://discord.com/api/guilds/947764065118335016/members/{uid}", json=data, headers=head)
         print(str(resp.json()))
-    except Exception as _:
+    except Exception as e:
+        capture_exception(e)
         return redirect(url_for("errorhandler"))
     finally:
         try:
@@ -410,4 +433,5 @@ def authorized_discord():
 
 
 if __name__ == "__main__":
-    app.run("0.0.0.0", 6880, debug=True)
+    sys.stdout.flush()
+    sock.run(app, "0.0.0.0", 6880, debug=True)
