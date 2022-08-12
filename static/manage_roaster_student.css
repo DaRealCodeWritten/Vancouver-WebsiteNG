@@ -1,5 +1,6 @@
 .cert-table p {
     border-radius: 5px;
+    font-family: sans-serif;
 }
 
 .cert-table th,tr,td {

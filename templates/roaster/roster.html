@@ -1,11 +1,28 @@
 <!DOCTYPE html>
-{% extends 'base.html' %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Virtual Vancouver FIR</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='roster.css') }}">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='roster.js') }}"></script>
 </head>
 <body>
-    <link rel="stylesheet" href="{{ url_for('static', filename='roster.css') }}">
+<div class="table-div">
+    <table class="cert-table" id="cert-table">
+        <tr>
+            <th>CID</th>
+            <th>Name</th>
+            <th>Rating</th>
+            <th>Visitor?</th>
+            <th>DEL</th>
+            <th>GND</th>
+            <th>TWR</th>
+            <th>DEP</th>
+            <th>APP</th>
+            <th>CTR</th>
+        </tr>
+    </table>
+</div>
 </body>
 </html>

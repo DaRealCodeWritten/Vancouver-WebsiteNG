@@ -29,3 +29,21 @@
 .fixed-nav-bar a:hover {
     -webkit-filter: brightness(90%);
 }
+
+.cert-table p {
+    border-radius: 5px;
+}
+
+.cert-table th,tr,td {
+    border: 1px solid black;
+    justify-content: center;
+}
+
+.cert-table td {
+    text-align: center;
+}
+
+.table-div {
+    display: flex;
+    justify-content: center;
+}
