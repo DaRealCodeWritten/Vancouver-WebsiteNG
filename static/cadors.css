@@ -1,0 +1,60 @@
+@font-face {
+    font-family: AirbusDisp2;
+    src: url("/static/AirbusDisp2.ttf");
+}
+
+.cadors-search {
+    display: flex;
+    justify-content: center;
+}
+
+.occurrence-info {
+    display: block;
+}
+
+label {
+    display: block;
+    border-spacing: 5px;
+    font-family: AirbusDisp2;
+}
+
+option, select, input{
+    font-family: AirbusDisp2;
+}
+
+.egg-link-hover {
+    visibility: hidden;
+}
+
+.submit {
+    height: 20px;
+    width: 60px;
+    background-color: green;
+    border-radius: 10px;
+    padding: 20px 60px;
+    position: absolute;
+    justify-self: center;
+}
+
+.button-d {
+    position: absolute;
+    left: 45%;
+    display: block;
+    align-content: center;
+    justify-content: center;
+    justify-items: center;
+    align-items: center;
+}
+
+.egg-link:hover + .egg-link-hover{
+    transition: opacity .2s, visibility .2s;
+    visibility: visible;
+}
+
+.submit:hover {
+    cursor: pointer;
+}
+
+.submit:disabled {
+    -webkit-filter: brightness(80%);
+}

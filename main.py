@@ -96,6 +96,16 @@ async def index():
         return render_template("index/index_active.html", welcome=f"{current_user.name}")
 
 
+@app.route("/cadors")
+async def cadors():
+    return render_template("cadors-it/cadors.html")
+
+
+@app.route("/cadors/secret")
+async def cadors_secret():
+    return render_template("cadors-it/cadors-secret.html")
+
+
 @app.route('/favicon.ico')
 async def favicon():
     """Favicon is not served from the root directory so redirect to static/favicon.ico"""

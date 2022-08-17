@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CADORS it!</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='cadors.css')}}">
+</head>
+<body>
+    <form name="cadors-finder" method="post">
+    <div class="cadors-search" style="display: flex; justify-content: center">
+        <div class="occurrence-info" style="display: block">
+            <label for="cdnum">
+                CADORS Number: <input type="number" id="cdnum" name="cdnum" class="cdnum">
+            </label>
+            <label for="date-low">
+                Occurrence Date: <input type="date" id="date-low" name="date-low"> to <input type="date" name="date-high">
+            </label>
+            <label for="octype">
+                Occurrence Type: <select id="octype">
+                    <option value="0">Accident</option>
+                    <option value="1">Incident</option>
+                </select>
+            </label>
+            <label for="imod">
+                Injuries: <select id="imod">
+                    <option value=">=">>=</option>
+                    <option value="=">=</option>
+                    <option value="<="><=</option>
+                </select>
+                <input type="number" name="icount">
+            </label>
+            </label>
+            <label for="fatalities">
+                Fatalities: <select id="fatalities" name="fmod">
+                <option value=">=">>=</option>
+                <option value="=">=</option>
+                <option value="<="><=</option>
+            </select>
+                <input type="number" name="fcount">
+            </label>
+            <label for="icao">
+                Canadian Aerodrome ID: <input
+                    type="text"
+                    title="Must not have special chars such as { or }"
+                    maxlength="4"
+                    pattern="[A-Za-z]{4}"
+                    id="icao"
+                    name="icao"
+                    class="icao">
+            </label>
+            <label for="ocloc">
+                Occurrence Location: <input
+                    pattern="[A-Za-z0-9]"
+                    type="text"
+                    title="Must only contain letters and numbers"
+                    id="ocloc"
+                    name="ocloc"
+                    class="ocloc">
+            </label>
+            <label for="province">
+                Province: <select id="province" name="province">
+                <option value="BC">British Columbia (Drowning and burning)</option>
+                <option value="AB">Alberta (Rocky road)</option>
+                <option value="SK">Saskatchewan (Doesn't actually exist)</option>
+                <option value="MB">Manitoba (My dog is in Ontario and i can still see it)</option>
+                <option value="ON">Ontario (ew Tim was born here)</option>
+                <option value="NB">New Brunswick (No funswick)</option>
+                <option value="NS">Nova Scotia (Lobster? I hardly know'er!)</option>
+                <option value="PEI">Prince Edward Island (free to select, 75$ to deselect and choose another prov.)</option>
+                <option value="QC">Quebec (Tabarnak)</option>
+                <option value="NL">Newfoundland and Labrador (Yes b'y)</option>
+            </select>
+            </label>
+        </div>
+    </div>
+    <div class="button-d">
+        <button class="submit" formmethod="post" type="submit">Search</button>
+    </div>
+    </form>
+    <div class="easter-egg" style="padding: 10px 10px; display: inline-block;">
+        <a class='egg-link' href="/cadors/secret" style="width: 10px; height: 10px; padding: 10px 10px; display: inline-block;"></a>
+        <p class="egg-link-hover" style="">What's this i wonder? Maybe you should click it</p>
+    </div>
+    <script src="{{url_for('static', filename='cadors.js')}}"></script>
+</body>
+</html>

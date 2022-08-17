@@ -102,22 +102,25 @@ async function getRosterData() {
     const sock = io();
     let uid = create_UUID();
     sock.on("connect", (data) => {
-        console.log(data);
         console.log("Connected to WSS");
-        sock.on("upgrade", (data) => {
-            console.log(data)
-        });
-		sock.on("ROSTER REQUEST", async (data) => {
-            if (data["uuid"] != uid) {
-
-            } else {
-                let roster = data['roster'];
-                await displayRosterData(roster);
-            }
-        });
-        sock.emit("REQUEST ROSTER", {
-            "uuid": uid
-        });
     });
+    sock.on("upgrade", (data) => {
+        console.log(data)
+    });
+    sock.on("ROSTER REQUEST", async (data) => {
+        if (data["uuid"] != uid) {
+
+        }
+        else {
+            let roster = data['roster'];
+            await displayRosterData(roster);
+        }
+    });
+    sock.emit("REQUEST ROSTER", {
+        "uuid": uid
+    });
+    while (!sock.connected) {
+
+    }
 	return sock;
 }

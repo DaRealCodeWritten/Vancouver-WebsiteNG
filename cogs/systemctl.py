@@ -1,5 +1,8 @@
 import discord
 import asyncio
+import psutil
+import time
+import tqdm
 import os
 from signal import SIGTERM
 from typing import Dict
@@ -9,7 +12,6 @@ from discord.ext import commands
 
 def is_dev():
     """Decorator to ensure the user is a dev"""
-
     async def predicate(ctx):
         if ctx.author.id in [
             703104766632263730,
@@ -26,7 +28,6 @@ def is_dev():
                                   )
             await ctx.send(embed=embed)
             return False
-
     return discord.ext.commands.check(predicate)
 
 
@@ -37,57 +38,50 @@ class SystemCTL(commands.Cog):
 
         }
 
+    async def _nginx(self, action: str):
+        if action == "start":
+            task = Popen(["C:/nginx-1.23.0/nginx.exe"], cwd="C:/nginx-1.23.0/")
+            await asyncio.sleep(5)
+            if task.poll() is None:
+                if "nginx" in self.processes.keys():
+                    task.terminate()
+            return True if task.poll() is None else False
+        elif action == "stop":
+            for task in tqdm.tqdm([proc for proc in psutil.process_iter()]):
+                try:
+                    if "nginx" in task.as_dict()["name"]:
+                        task.kill()
+                        await asyncio.sleep(5)
+                        if task.is_running():
+                            return False
+                        else:
+                            if "nginx" in self.processes.keys():
+                                self.processes.pop("nginx")
+                            continue
+                except psutil.NoSuchProcess:
+                    continue
+            return True
+
     @commands.command()
     @is_dev()
     async def systemctl(self, ctx: commands.Context, module: str, action: str):
         modules = {
-            "bot": "bot.py",
-            "web": "main.py",
-            "self": 0
+            "nginx": self._nginx,
+            "web": None
         }
-        actions = {
-            "start": Popen,
-            "stop": None
-        }
-        do = actions.get(action)
-        using = modules.get(module)
-        if not isinstance(using, str) and action == "stop":  # Special case 'self'
-            await ctx.send("Stopping self...")
-            await self.bot.close()
-        if action == "stop":
-            process = self.processes.get(module)
-            if process is None:
-                await ctx.send("Couldn't find that process")
-                return
-            else:
-                process.send_signal(SIGTERM)
-                await ctx.send("Sent SIGTERM")
-                await asyncio.sleep(5)
-                if process.poll() is None:
-                    await ctx.send("Task did not close, it may be frozen")
-                    return
-                else:
-                    await ctx.send("Task closed")
-                    return
-        if module == "nginx" and action == "start":
-            ngin = Popen(["C:/nginx-1.23.0/nginx.exe"], cwd="C:/nginx-1.23.0/")
-            await asyncio.sleep(5)
-            if ngin.poll() is None:  # Process is most likely stable if this is True
-                self.processes[module] = ngin
-                await ctx.send(f"{module} started successfully")
-            else:
-                await ctx.send(f"{module} appears to have crashed :(")
-        if do is None or using is None:
-            await ctx.send("Invalid args")
-            return
-        proc = do([r".\venv\Scripts\python.exe", using], shell=True, creationflags=CREATE_NEW_CONSOLE, cwd=os.getcwd())
-        await ctx.send(f"Attempted to {action} {using}")
-        await asyncio.sleep(5)  # Wait to see if the process dies
-        if proc.poll() is None:  # Process is most likely stable if this is True
-            self.processes[module] = proc
-            await ctx.send(f"{using} {action}ed successfully")
+        func = modules.get(module)
+        if func is None:
+            await ctx.send("Couldn't find that module")
         else:
-            await ctx.send(f"{using} appears to have crashed :(")
+            result = await func(action)
+            if result:
+                await ctx.send("Completed action successfully")
+            else:
+                await ctx.send(
+                    """
+                    Something went wrong, the action may have thrown an error or if a task is being started, it crashed
+                    """
+                )
 
 
 def setup(bot):
