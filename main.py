@@ -146,7 +146,16 @@ async def delete_user():
 async def uploads():
     """Returns an uploaded file based on the file= arg"""
     try:
-        return send_file(os.path.join(app.root_path, "cdn/") + request.args.get("file"), as_attachment=True)
+        file = request.args.get("file")
+        if file is None:
+            raise TypeError()
+        prop = secure_filename(file)
+        templ = Template("$app_root/cdn/$filename")
+        prepared = templ.safe_substitute({
+            "app_root": app.root_path,
+            "filename": prop
+        })
+        return send_file(prepared, as_attachment=True)
     except FileNotFoundError:
         return abort(Response("File not found.", 404))
     except TypeError:
